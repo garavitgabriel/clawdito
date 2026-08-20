@@ -1,0 +1,11 @@
+{
+  "_comment": "USD per million tokens. Models matched by longest prefix; _default covers unknown models. Fable pricing is assumed Opus-tier until official API pricing is published — adjust here.",
+  "claude-fable-5": {"in": 15.0, "out": 75.0, "cache_read": 1.5, "cache_write": 18.75},
+  "claude-opus-5": {"in": 15.0, "out": 75.0, "cache_read": 1.5, "cache_write": 18.75},
+  "claude-opus-4": {"in": 15.0, "out": 75.0, "cache_read": 1.5, "cache_write": 18.75},
+  "claude-sonnet-5": {"in": 3.0, "out": 15.0, "cache_read": 0.3, "cache_write": 3.75},
+  "claude-sonnet-4": {"in": 3.0, "out": 15.0, "cache_read": 0.3, "cache_write": 3.75},
+  "claude-haiku-4": {"in": 1.0, "out": 5.0, "cache_read": 0.1, "cache_write": 1.25},
+  "claude-3-5-haiku": {"in": 0.8, "out": 4.0, "cache_read": 0.08, "cache_write": 1.0},
+  "_default": {"in": 3.0, "out": 15.0, "cache_read": 0.3, "cache_write": 3.75}
+}

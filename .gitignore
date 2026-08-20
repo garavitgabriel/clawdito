@@ -1,0 +1,14 @@
+# PlatformIO
+firmware/.pio/
+firmware/.vscode/
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+
+# Local secrets — never commit tokens or credentials
+*.env
+secrets.h
