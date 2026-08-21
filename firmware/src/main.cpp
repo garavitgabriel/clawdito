@@ -22,7 +22,7 @@ static uint32_t s_last_refresh = 0;
 void setup() {
   Serial.begin(115200);
   delay(100);
-  Serial.println("\n=== Clawdito v1.0 ===");
+  Serial.println("\n=== Clawdito v1.1 ===");
 
   display::init();
   touch::init();
@@ -51,7 +51,14 @@ static void leave_splash_once() {
     return;
   }
   wifilink::begin(c.wifi_ssid, c.wifi_pass);
-  bridge::begin(c.bridge_host, c.bridge_port, c.bridge_token, c.poll_ms);
+  bridge::begin(c);
+
+  String labels[MAX_PROFILES];
+  uint8_t n = c.profile_count();
+  for (uint8_t i = 0; i < n; i++) {
+    labels[i] = c.prof[i].label.length() ? c.prof[i].label : String("bridge");
+  }
+  ui::set_profiles(labels, n);
   ui::show_main();
   s_running = true;
 }
@@ -64,6 +71,9 @@ void loop() {
   switch (button::poll()) {
     case ButtonEvent::TAP:
       if (s_running) ui::next_page();
+      break;
+    case ButtonEvent::HOLD_2S:
+      if (s_running) ui::switch_profile();
       break;
     case ButtonEvent::HOLD_5S:
       Serial.println("[button] wiping config, back to setup");
@@ -84,9 +94,10 @@ void loop() {
     uint32_t now = millis();
     if (now - s_last_refresh >= UI_REFRESH_MS) {
       s_last_refresh = now;
-      UsageSnapshot s;
-      bridge::snapshot(s);
-      ui::update(s);
+      UsageSnapshot snaps[MAX_PROFILES];
+      uint8_t n = bridge::count();
+      for (uint8_t i = 0; i < n; i++) bridge::snapshot(i, snaps[i]);
+      ui::update(snaps, n);
     }
   }
 

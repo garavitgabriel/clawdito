@@ -22,13 +22,24 @@
 #define FONT_MD   &lv_font_montserrat_16
 #define FONT_SM   &lv_font_montserrat_12
 
-static const uint8_t N_PAGES = 3;
-static lv_obj_t* s_pages[N_PAGES];
+// The Both page only exists with two profiles, so the page count is settled
+// in set_profiles() rather than at build time.
+static const uint8_t MAX_PAGES = 4;
+static uint8_t s_n_pages = 3;
+static lv_obj_t* s_pages[MAX_PAGES];
 static uint8_t s_active = 0;
 static lv_obj_t* s_splash = nullptr;
 static lv_obj_t* s_portal = nullptr;
 
+// bridge profiles. Labels stand in for the page titles, so they get clipped
+// to what FONT_TITLE fits between the mascot and the status dot.
+static const size_t TITLE_MAX = 14;
+static String  s_labels[MAX_PROFILES];
+static uint8_t s_n_profiles = 1;
+static uint8_t s_profile = 0;     // the one pages 0 and 2 render
+
 // page 0 widgets
+static lv_obj_t* w_title0;
 static lv_obj_t* w_dot0;
 static lv_obj_t* w_pct5;
 static lv_obj_t* w_bar5;
@@ -43,12 +54,21 @@ static lv_obj_t* w_eye_r;
 static lv_obj_t* w_mood1;
 static lv_obj_t* w_dot1;
 // page 2 widgets
+static lv_obj_t* w_title2;
 static lv_obj_t* w_today;
 static lv_obj_t* w_month;
 static lv_obj_t* w_yday;
 static lv_obj_t* w_bars[7];
 static lv_obj_t* w_days[7];
 static lv_obj_t* w_dot2;
+// page 3 widgets (one set per profile)
+static lv_obj_t* w_b_label[MAX_PROFILES];
+static lv_obj_t* w_b_dot[MAX_PROFILES];
+static lv_obj_t* w_b_bar5[MAX_PROFILES];
+static lv_obj_t* w_b_pct5[MAX_PROFILES];
+static lv_obj_t* w_b_bar7[MAX_PROFILES];
+static lv_obj_t* w_b_pct7[MAX_PROFILES];
+static lv_obj_t* w_b_today[MAX_PROFILES];
 
 // Claude-Code-flavored gerunds for the footer.
 static const char* MOODS[] = {
@@ -167,8 +187,8 @@ static void build_usage(lv_obj_t* p) {
   lv_obj_t* mascot = clawd(p, 2);
   lv_obj_set_pos(mascot, 2, 1);
 
-  lv_obj_t* title = text(p, "Usage", FONT_TITLE, C_TEXT);
-  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 0);
+  w_title0 = text(p, "Usage", FONT_TITLE, C_TEXT);
+  lv_obj_align(w_title0, LV_ALIGN_TOP_MID, 0, 0);
 
   w_dot0 = status_dot(p);
   limit_card(p, 27, "Current", &w_pct5, &w_bar5, &w_reset5);
@@ -203,8 +223,8 @@ static void build_mascot(lv_obj_t* p) {
 }
 
 static void build_cost(lv_obj_t* p) {
-  lv_obj_t* title = text(p, "Cost", FONT_TITLE, C_TEXT);
-  lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 0);
+  w_title2 = text(p, "Cost", FONT_TITLE, C_TEXT);
+  lv_obj_align(w_title2, LV_ALIGN_TOP_MID, 0, 0);
   w_dot2 = status_dot(p);
 
   lv_obj_t* lt = text(p, "TODAY", FONT_SM, C_DIM);
@@ -227,10 +247,63 @@ static void build_cost(lv_obj_t* p) {
   }
 }
 
+// One profile's row on the Both page: label + online dot, a 5h and a 7d
+// bar, and today's spend on the right.
+static void both_card(lv_obj_t* parent, int y, uint8_t i) {
+  lv_obj_t* card = lv_obj_create(parent);
+  lv_obj_remove_style_all(card);
+  lv_obj_set_size(card, 308, 72);
+  lv_obj_set_pos(card, 0, y);
+  lv_obj_set_style_bg_color(card, C_CARD, LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(card, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_radius(card, 8, LV_PART_MAIN);
+  lv_obj_set_style_pad_hor(card, 8, LV_PART_MAIN);
+  lv_obj_set_style_pad_ver(card, 0, LV_PART_MAIN);
+  lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
+
+  w_b_label[i] = text(card, "", FONT_SM, C_DIM);
+  lv_obj_align(w_b_label[i], LV_ALIGN_TOP_LEFT, 0, 5);
+
+  w_b_dot[i] = solid(card, 0, 0, 9, 9, C_HOT);
+  lv_obj_set_style_radius(w_b_dot[i], 5, LV_PART_MAIN);
+  lv_obj_align(w_b_dot[i], LV_ALIGN_TOP_RIGHT, 0, 6);
+
+  w_b_today[i] = text(card, "$0.00", FONT_MD, C_GREEN);
+  lv_obj_align(w_b_today[i], LV_ALIGN_TOP_RIGHT, 0, 34);
+
+  const char* tags[2] = {"5h", "7d"};
+  lv_obj_t** bars[2] = {&w_b_bar5[i], &w_b_bar7[i]};
+  lv_obj_t** pcts[2] = {&w_b_pct5[i], &w_b_pct7[i]};
+  for (uint8_t r = 0; r < 2; r++) {
+    int ry = 24 + r * 20;
+    lv_obj_t* tag = text(card, tags[r], FONT_SM, C_DIM);
+    lv_obj_align(tag, LV_ALIGN_TOP_LEFT, 0, ry);
+
+    *bars[r] = lv_bar_create(card);
+    lv_obj_set_size(*bars[r], 140, 7);
+    lv_obj_align(*bars[r], LV_ALIGN_TOP_LEFT, 24, ry + 4);
+    lv_obj_set_style_bg_color(*bars[r], C_TRACK, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(*bars[r], LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_radius(*bars[r], 3, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(*bars[r], C_OK, LV_PART_INDICATOR);
+    lv_obj_set_style_bg_opa(*bars[r], LV_OPA_COVER, LV_PART_INDICATOR);
+    lv_obj_set_style_radius(*bars[r], 3, LV_PART_INDICATOR);
+    lv_bar_set_range(*bars[r], 0, 100);
+
+    *pcts[r] = text(card, "--%", FONT_SM, C_TEXT);
+    lv_obj_align(*pcts[r], LV_ALIGN_TOP_LEFT, 172, ry);
+  }
+}
+
+static void build_both(lv_obj_t* p) {
+  both_card(p, 2, 0);
+  both_card(p, 82, 1);
+}
+
 // ----- navigation -----
 
 static void switch_to(uint8_t idx) {
-  uint8_t target = idx % N_PAGES;
+  uint8_t target = idx % s_n_pages;
   if (target == s_active) return;
   uint8_t prev = s_active;
   s_active = target;
@@ -241,7 +314,7 @@ static void switch_to(uint8_t idx) {
 static void on_gesture(lv_event_t*) {
   lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
   if (dir == LV_DIR_LEFT)  switch_to(s_active + 1);
-  if (dir == LV_DIR_RIGHT) switch_to(s_active + N_PAGES - 1);
+  if (dir == LV_DIR_RIGHT) switch_to(s_active + s_n_pages - 1);
   lv_indev_wait_release(lv_indev_get_act());
 }
 
@@ -258,7 +331,7 @@ void init() {
   lv_obj_set_style_bg_color(scr, C_BG, LV_PART_MAIN);
   lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, LV_PART_MAIN);
 
-  for (uint8_t i = 0; i < N_PAGES; i++) s_pages[i] = page(scr);
+  for (uint8_t i = 0; i < 3; i++) s_pages[i] = page(scr);
   build_usage(s_pages[0]);
   build_mascot(s_pages[1]);
   build_cost(s_pages[2]);
@@ -273,8 +346,39 @@ void init() {
   lv_obj_align(m, LV_ALIGN_CENTER, 0, -24);
   lv_obj_t* t = text(s_splash, "Clawdito", FONT_TITLE, C_ORANGE);
   lv_obj_align(t, LV_ALIGN_CENTER, 0, 22);
-  lv_obj_t* v = text(s_splash, "v1.0", FONT_SM, C_DIM);
+  lv_obj_t* v = text(s_splash, "v1.1", FONT_SM, C_DIM);
   lv_obj_align(v, LV_ALIGN_CENTER, 0, 44);
+}
+
+// Pages 0 and 2 are titled by the active profile once there is more than
+// one; with a single bridge the plain page names read better.
+static void apply_titles() {
+  if (s_n_profiles < 2) {
+    lv_label_set_text(w_title0, "Usage");
+    lv_label_set_text(w_title2, "Cost");
+  } else {
+    char buf[TITLE_MAX + 1];
+    snprintf(buf, sizeof(buf), "%s", s_labels[s_profile].c_str());
+    lv_label_set_text(w_title0, buf);
+    lv_label_set_text(w_title2, buf);
+  }
+  lv_obj_align(w_title0, LV_ALIGN_TOP_MID, 0, 0);
+  lv_obj_align(w_title2, LV_ALIGN_TOP_MID, 0, 0);
+}
+
+void set_profiles(const String labels[], uint8_t count) {
+  s_n_profiles = count < 1 ? 1 : (count > MAX_PROFILES ? MAX_PROFILES : count);
+  for (uint8_t i = 0; i < s_n_profiles; i++) s_labels[i] = labels[i];
+  s_profile = 0;
+
+  if (s_n_profiles == 2 && s_n_pages == 3) {
+    s_pages[3] = page(lv_scr_act());
+    build_both(s_pages[3]);
+    s_n_pages = 4;
+    for (uint8_t i = 0; i < 2; i++)
+      lv_label_set_text(w_b_label[i], s_labels[i].c_str());
+  }
+  apply_titles();
 }
 
 void show_main() {
@@ -309,6 +413,12 @@ void show_portal(const String& ap, const String& pass) {
 
 void next_page() { switch_to(s_active + 1); }
 
+void switch_profile() {
+  if (s_n_profiles < 2) return;
+  s_profile = (s_profile + 1) % s_n_profiles;
+  apply_titles();     // don't wait for the next poll to show the change
+}
+
 static void fmt_reset(char* out, size_t cap, uint32_t secs) {
   uint32_t m = secs / 60;
   if (m < 60)        snprintf(out, cap, "Resets in %um", (unsigned)m);
@@ -324,7 +434,10 @@ static lv_color_t heat(uint8_t pct) {
   return C_OK;
 }
 
-void update(const UsageSnapshot& s) {
+void update(const UsageSnapshot snaps[], uint8_t count) {
+  if (!count) return;
+  const UsageSnapshot& s = snaps[s_profile < count ? s_profile : 0];
+
   lv_color_t dc = s.online ? C_OK : C_HOT;
   lv_obj_set_style_bg_color(w_dot0, dc, LV_PART_MAIN);
   lv_obj_set_style_bg_color(w_dot1, dc, LV_PART_MAIN);
@@ -364,6 +477,22 @@ void update(const UsageSnapshot& s) {
     lv_obj_set_size(w_bars[i], 30, h);
     lv_obj_set_pos(w_bars[i], 6 + i * 43, 142 - h);
     lv_label_set_text(w_days[i], s.last7_day[i]);
+  }
+
+  if (s_n_pages < 4) return;
+  for (uint8_t i = 0; i < 2 && i < count; i++) {
+    const UsageSnapshot& b = snaps[i];
+    lv_obj_set_style_bg_color(w_b_dot[i], b.online ? C_OK : C_HOT, LV_PART_MAIN);
+    if (b.limits_ok) {
+      lv_label_set_text_fmt(w_b_pct5[i], "%u%%", (unsigned)b.pct_5h);
+      lv_bar_set_value(w_b_bar5[i], b.pct_5h, LV_ANIM_ON);
+      lv_obj_set_style_bg_color(w_b_bar5[i], heat(b.pct_5h), LV_PART_INDICATOR);
+      lv_label_set_text_fmt(w_b_pct7[i], "%u%%", (unsigned)b.pct_7d);
+      lv_bar_set_value(w_b_bar7[i], b.pct_7d, LV_ANIM_ON);
+      lv_obj_set_style_bg_color(w_b_bar7[i], heat(b.pct_7d), LV_PART_INDICATOR);
+    }
+    snprintf(buf, sizeof(buf), "$%.2f", b.today_usd);
+    lv_label_set_text(w_b_today[i], buf);
   }
 }
 

@@ -6,11 +6,12 @@
 #include <freertos/task.h>
 #include <freertos/semphr.h>
 
-static UsageSnapshot s_snap;
+static UsageSnapshot s_snap[MAX_PROFILES];
 static SemaphoreHandle_t s_lock = nullptr;
 
-static String   s_url;
-static String   s_auth;
+static String   s_url[MAX_PROFILES];
+static String   s_auth[MAX_PROFILES];
+static uint8_t  s_count = 0;
 static uint32_t s_poll_ms = 5000;
 
 // Refuse to parse absurdly large responses (defense against a misbehaving
@@ -19,14 +20,14 @@ static const int MAX_BODY = 16 * 1024;
 
 namespace bridge {
 
-static bool poll_once(UsageSnapshot& s) {
+static bool poll_once(uint8_t idx, UsageSnapshot& s) {
   if (!wifilink::connected()) return false;
 
   HTTPClient http;
   http.setConnectTimeout(2000);
   http.setTimeout(3000);
-  if (!http.begin(s_url)) return false;
-  if (s_auth.length()) http.addHeader("Authorization", s_auth);
+  if (!http.begin(s_url[idx])) return false;
+  if (s_auth[idx].length()) http.addHeader("Authorization", s_auth[idx]);
 
   int code = http.GET();
   if (code != 200) {
@@ -80,40 +81,53 @@ static bool poll_once(UsageSnapshot& s) {
   return true;
 }
 
+// One task, profiles polled back-to-back: two concurrent HTTPClients would
+// cost more RAM than a second account is worth.
 static void task(void*) {
   for (;;) {
-    UsageSnapshot fresh{};
-    bool ok = poll_once(fresh);
-    if (xSemaphoreTake(s_lock, portMAX_DELAY) == pdTRUE) {
-      if (ok) {
-        fresh.online = true;
-        fresh.polls = s_snap.polls + 1;
-        s_snap = fresh;
-      } else {
-        s_snap.online = false;
+    for (uint8_t i = 0; i < s_count; i++) {
+      UsageSnapshot fresh{};
+      bool ok = poll_once(i, fresh);
+      if (xSemaphoreTake(s_lock, portMAX_DELAY) == pdTRUE) {
+        if (ok) {
+          fresh.online = true;
+          fresh.polls = s_snap[i].polls + 1;
+          s_snap[i] = fresh;
+        } else {
+          s_snap[i].online = false;
+        }
+        xSemaphoreGive(s_lock);
       }
-      xSemaphoreGive(s_lock);
     }
     vTaskDelay(pdMS_TO_TICKS(s_poll_ms));
   }
 }
 
-void begin(const String& host, uint16_t port, const String& token,
-           uint32_t poll_ms) {
-  s_url = "http://" + host + ":" + String(port) + "/usage";
-  s_auth = token.length() ? ("Bearer " + token) : "";
-  s_poll_ms = poll_ms;
+void begin(const AppConfig& c) {
+  s_count = c.profile_count();
+  for (uint8_t i = 0; i < s_count; i++) {
+    const BridgeProfile& p = c.prof[i];
+    s_url[i] = "http://" + p.host + ":" + String(p.port) + "/usage";
+    s_auth[i] = p.token.length() ? ("Bearer " + p.token) : "";
+  }
+  s_poll_ms = c.poll_ms;
+  if (!s_count) return;
   if (!s_lock) s_lock = xSemaphoreCreateMutex();
   xTaskCreatePinnedToCore(task, "bridge_poll", 8192, nullptr, 1, nullptr, 0);
-  Serial.printf("[bridge] polling %s every %lums\n", s_url.c_str(),
-                (unsigned long)poll_ms);
+  for (uint8_t i = 0; i < s_count; i++) {
+    Serial.printf("[bridge] polling %s every %lums\n", s_url[i].c_str(),
+                  (unsigned long)s_poll_ms);
+  }
 }
 
-void snapshot(UsageSnapshot& out) {
+void snapshot(uint8_t idx, UsageSnapshot& out) {
+  if (idx >= s_count) return;
   if (s_lock && xSemaphoreTake(s_lock, pdMS_TO_TICKS(20)) == pdTRUE) {
-    out = s_snap;
+    out = s_snap[idx];
     xSemaphoreGive(s_lock);
   }
 }
+
+uint8_t count() { return s_count; }
 
 }  // namespace bridge

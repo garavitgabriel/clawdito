@@ -69,12 +69,30 @@ URL manually), then fill in:
 |---|---|
 | WiFi network | your 2.4 GHz SSID (dropdown scans automatically) |
 | WiFi password | — |
-| Bridge host | the IP the bridge printed |
-| Port | 8787 |
-| Bridge token | the token the bridge printed |
+| **Profile A** — Name | what to call this account, e.g. `personal` |
+| **Profile A** — Bridge host | the IP the bridge printed |
+| **Profile A** — Port | 8787 |
+| **Profile A** — Bridge token | the token the bridge printed |
+| **Profile B** | same four fields for a second machine — leave blank for one bridge |
 
 Hit **Connect**. The device reboots, joins your WiFi, and data appears
 within ~10 seconds (green dot = bridge reachable).
+
+Updating from a single-bridge v1.0 device? Its existing bridge target is
+migrated to Profile A (named `default`) on the first boot — no need to
+re-provision.
+
+## Two profiles
+
+Two computers, two Anthropic accounts, one LAN: run the same unmodified
+`clawdito_bridge.py` on each and enter both in the setup page. The device
+polls both bridges from one loop.
+
+- Usage and Cost show the **active** profile; the page title is its name.
+- **Hold BOOT 2s** to switch which one that is.
+- A fourth page, **Both**, appears and shows each account's 5h bar, weekly
+  bar and today's spend, each with its own online dot — so one bridge going
+  down only reddens its own row.
 
 ## Controls
 
@@ -82,6 +100,7 @@ within ~10 seconds (green dot = bridge reachable).
 |---|---|
 | Swipe left/right | Next / previous page |
 | Tap BOOT | Next page |
+| Hold BOOT 2s | Switch active profile (two profiles only) |
 | Hold BOOT 5s | Wipe config → back to Setup Mode |
 
 ## Troubleshooting

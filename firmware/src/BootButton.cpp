@@ -3,6 +3,7 @@
 static const int      PIN = 0;
 static const uint32_t DEBOUNCE_MS = 30;
 static const uint32_t TAP_MAX_MS = 500;
+static const uint32_t HOLD2_MS = 2000;
 static const uint32_t HOLD_MS = 5000;
 
 static bool     s_stable = true;      // pull-up: true = released
@@ -42,8 +43,12 @@ ButtonEvent poll() {
     s_hold_sent = false;
     return ButtonEvent::NONE;
   }
-  // just released
-  if (!s_hold_sent && now - s_press_at <= TAP_MAX_MS) return ButtonEvent::TAP;
+  // just released. HOLD_2S is classified here, not during the hold: firing it
+  // mid-press would trip on the way to the 5s wipe.
+  if (s_hold_sent) return ButtonEvent::NONE;
+  uint32_t held = now - s_press_at;
+  if (held <= TAP_MAX_MS) return ButtonEvent::TAP;
+  if (held >= HOLD2_MS)   return ButtonEvent::HOLD_2S;
   return ButtonEvent::NONE;
 }
 

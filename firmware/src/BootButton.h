@@ -4,7 +4,7 @@
 // Debounced BOOT button (GPIO 0). Polled, never via ISR — GPIO 0 doubles
 // as the ESP32-S3 download-mode strap pin.
 
-enum class ButtonEvent { NONE, TAP, HOLD_5S };
+enum class ButtonEvent { NONE, TAP, HOLD_2S, HOLD_5S };
 
 namespace button {
 

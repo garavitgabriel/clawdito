@@ -18,6 +18,20 @@ button):
 | **Usage** | Official rate limits: 5h window % + weekly % with progress bars and exact reset countdowns — the same numbers as `/usage` inside Claude Code |
 | **Clawd** | A big pixel-art Clawd. It blinks. That's it. That's the page. |
 | **Cost** | Today / this month / yesterday in API-equivalent dollars, plus a 7-day bar chart, parsed from your local Claude Code transcripts |
+| **Both** | Only with two bridges: both accounts side by side — 5h, weekly and today's spend for each |
+
+## Two accounts
+
+If you run Claude Code on two computers under two different Anthropic
+accounts (say personal and work), give Clawdito **both**. Each machine runs
+the same unmodified bridge; the device polls both and holds two profiles:
+
+- The setup page has a **Profile A** and an optional **Profile B** block.
+- **Hold BOOT for 2 seconds** to flip which account the Usage and Cost pages
+  show — the page title becomes the profile's name.
+- The **Both** page shows both at once, with a per-account online dot.
+
+Leave Profile B empty for a single bridge and nothing changes.
 
 A rotating status word in Claude Code's spinner style ("Flibbertigibbeting…",
 "Noodling…") keeps the bottom edge company.
@@ -65,7 +79,8 @@ setup page pops up (or open `http://192.168.4.1`), pick your **2.4 GHz**
 WiFi, paste the bridge IP + token, hit **Connect**. Done — numbers appear
 within seconds.
 
-To re-provision at any time: hold **BOOT** for 5 seconds.
+BOOT gestures: **tap** = next page, **hold 2s** = switch profile,
+**hold 5s** = wipe config and re-provision.
 
 See [docs/SETUP.md](docs/SETUP.md) for details and troubleshooting, and
 [docs/HARDWARE.md](docs/HARDWARE.md) for the board's pin map and its quirks

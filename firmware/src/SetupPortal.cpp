@@ -27,10 +27,12 @@ static const char* FORM_HTML = R"(<!doctype html>
       border-radius:6px;background:#e0784f;color:#17121f;font-weight:700}
  .cols{display:flex;gap:.6rem}.cols>*{flex:1}
  .note{color:#b9b0c7;font-size:.8rem;margin-top:1rem}
+ h2{font-size:.95rem;color:#f2eef7;margin:1.4rem 0 0;
+      border-top:1px solid #4a4158;padding-top:.9rem}
  code{color:#e0784f}
 </style></head><body>
 <h1>&#129408; Clawdito</h1>
-<div class="sub">Connect me to your WiFi and your bridge.</div>
+<div class="sub">Connect me to your WiFi and your bridges.</div>
 <form method="POST" action="/apply">
  <label>WiFi network</label>
  <select id="nets" name="ssid"><option value="">scanning&hellip;</option></select>
@@ -38,12 +40,25 @@ static const char* FORM_HTML = R"(<!doctype html>
  <input name="ssid_text" placeholder="network name">
  <label>WiFi password</label>
  <input type="password" name="wpass">
+ <h2>Profile A</h2>
+ <label>Name</label>
+ <input name="label0" placeholder="personal">
  <div class="cols">
-  <div><label>Bridge host</label><input name="host" required placeholder="192.168.x.x"></div>
-  <div><label>Port</label><input type="number" name="port" value="8787" min="1" max="65535"></div>
+  <div><label>Bridge host</label><input name="host0" required placeholder="192.168.x.x"></div>
+  <div><label>Port</label><input type="number" name="port0" value="8787" min="1" max="65535"></div>
  </div>
  <label>Bridge token</label>
- <input type="password" name="token" placeholder="from the bridge terminal">
+ <input type="password" name="token0" placeholder="from the bridge terminal">
+ <h2>Profile B <span class="sub">&mdash; optional</span></h2>
+ <label>Name</label>
+ <input name="label1" placeholder="work">
+ <div class="cols">
+  <div><label>Bridge host</label><input name="host1" placeholder="192.168.x.x"></div>
+  <div><label>Port</label><input type="number" name="port1" value="8787" min="1" max="65535"></div>
+ </div>
+ <label>Bridge token</label>
+ <input type="password" name="token1" placeholder="from the bridge terminal">
+ <div class="note">Leave Profile B empty for a single bridge.</div>
  <button type="submit">Connect</button>
 </form>
 <div class="note">The token is printed when you start
@@ -100,18 +115,25 @@ static void handle_networks() {
 static void handle_apply() {
   String ssid = s_http.arg("ssid");
   if (ssid.isEmpty()) ssid = s_http.arg("ssid_text");
-  String host = s_http.arg("host");
-  if (ssid.isEmpty() || host.isEmpty()) {
+  if (ssid.isEmpty() || s_http.arg("host0").isEmpty()) {
     s_http.send(400, "text/plain", "WiFi network and bridge host are required.");
     return;
   }
   AppConfig c;
-  c.wifi_ssid    = ssid;
-  c.wifi_pass    = s_http.arg("wpass");
-  c.bridge_host  = host;
-  c.bridge_port  = (uint16_t)s_http.arg("port").toInt();
-  if (c.bridge_port == 0) c.bridge_port = 8787;
-  c.bridge_token = s_http.arg("token");
+  c.wifi_ssid = ssid;
+  c.wifi_pass = s_http.arg("wpass");
+
+  static const char* FALLBACK_LABEL[MAX_PROFILES] = {"A", "B"};
+  for (uint8_t i = 0; i < MAX_PROFILES; i++) {
+    String host = s_http.arg(String("host") + String(i));
+    if (host.isEmpty()) break;              // profile B skipped when blank
+    c.prof[i].label = s_http.arg(String("label") + String(i));
+    if (c.prof[i].label.isEmpty()) c.prof[i].label = FALLBACK_LABEL[i];
+    c.prof[i].host  = host;
+    c.prof[i].port  = (uint16_t)s_http.arg(String("port") + String(i)).toInt();
+    if (c.prof[i].port == 0) c.prof[i].port = 8787;
+    c.prof[i].token = s_http.arg(String("token") + String(i));
+  }
   config::save(c);
 
   s_http.send(200, "text/html", SAVED_HTML);

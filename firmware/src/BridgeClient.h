@@ -1,8 +1,10 @@
 #pragma once
 #include <Arduino.h>
+#include "AppConfig.h"
 
-// Polls the Clawdito bridge over HTTP and keeps the latest snapshot in a
-// mutex-guarded struct the UI thread can copy at any time.
+// Polls every configured Clawdito bridge over HTTP and keeps the latest
+// snapshot per profile in mutex-guarded structs the UI thread can copy at
+// any time.
 
 struct UsageSnapshot {
   bool     online = false;        // last poll succeeded
@@ -24,8 +26,8 @@ struct UsageSnapshot {
 
 namespace bridge {
 
-void begin(const String& host, uint16_t port, const String& token,
-           uint32_t poll_ms);
-void snapshot(UsageSnapshot& out);
+void begin(const AppConfig& c);                   // poll every valid profile
+void snapshot(uint8_t idx, UsageSnapshot& out);   // idx 0..count()-1
+uint8_t count();
 
 }  // namespace bridge
