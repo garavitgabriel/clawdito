@@ -1,0 +1,49 @@
+name: Board port
+description: You got Clawdito running on a different board, or want to
+labels: [port, hardware]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The bridge is board-agnostic — a port is mostly a display driver, a
+        touch driver and a pin map. See [CONTRIBUTING.md](../blob/main/CONTRIBUTING.md).
+
+  - type: input
+    id: board
+    attributes:
+      label: Board
+      placeholder: e.g. Waveshare ESP32-S3-Touch-AMOLED-1.8
+    validations:
+      required: true
+
+  - type: input
+    id: display
+    attributes:
+      label: Display controller and resolution
+      placeholder: e.g. SH8601, 368x448
+
+  - type: input
+    id: touch
+    attributes:
+      label: Touch controller
+      placeholder: e.g. FT3168 over I²C, or "none"
+
+  - type: dropdown
+    id: state
+    attributes:
+      label: Where you are
+      options:
+        - Working — I'd like to contribute it
+        - Partially working
+        - Asking whether it's feasible before I start
+    validations:
+      required: true
+
+  - type: textarea
+    id: quirks
+    attributes:
+      label: Quirks found
+      description: >
+        Byte order, offsets, reset timing, pins that disagree with the vendor
+        docs — the things that cost you an evening. These go into
+        docs/HARDWARE.md so the next person skips them.

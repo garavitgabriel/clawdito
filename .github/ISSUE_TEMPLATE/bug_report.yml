@@ -1,0 +1,73 @@
+name: Bug report
+description: Something doesn't work
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please don't paste your bridge token (`~/.clawdito/token`) or anything
+        from `~/.claude/.credentials.json` — that's a live credential.
+
+  - type: dropdown
+    id: board
+    attributes:
+      label: Board
+      description: The Touch and non-Touch 1.47" boards look identical and are not compatible.
+      options:
+        - Waveshare ESP32-S3-Touch-LCD-1.47 (the supported board)
+        - Waveshare ESP32-S3-LCD-1.47 (non-touch — not supported)
+        - Other / a port
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: What's affected
+      description: >
+        Usage and Cost come from different sources, so knowing which one
+        breaks narrows this down immediately.
+      options:
+        - Usage page (blank, stale, or wrong percentages)
+        - Cost page
+        - Both pages / the device shows "bridge offline"
+        - Provisioning / setup portal / WiFi
+        - Touch or buttons
+        - Display (garbled, wrong colors, black screen)
+        - Building or flashing
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens
+      description: What you expected, and what you got instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: bridge
+    attributes:
+      label: What the bridge returns
+      description: |
+        From another machine on the LAN (redact the token):
+
+        ```
+        curl -s -H "Authorization: Bearer <token>" http://<bridge-ip>:8787/usage
+        ```
+      render: json
+
+  - type: input
+    id: platform
+    attributes:
+      label: Bridge machine
+      placeholder: e.g. macOS 26.3 / Python 3.11, run via launchd
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: The bridge is running and `curl http://127.0.0.1:8787/health` answers on that machine
+        - label: The device is on a 2.4 GHz network (the ESP32 can't see 5 GHz)

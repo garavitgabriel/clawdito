@@ -26,8 +26,12 @@ Clawdito bridge running
   device token:     <token>
 ```
 
-Keep this terminal running (or install it as a login service — launchd on
-macOS, systemd --user on Linux).
+Keep this terminal running — or better, install it as a login service so it
+survives reboots. Ready-made launchd and systemd units are in
+[`../bridge/service/`](../bridge/service/README.md).
+
+Flags: `--port` (default 8787) and `--host` (default `0.0.0.0`, i.e. all
+interfaces — the device needs to reach it over the LAN).
 
 **What it serves** (only on your LAN, only with the token):
 
@@ -107,7 +111,8 @@ polls both bridges from one loop.
 
 | Symptom | Fix |
 |---|---|
-| "bridge offline" on the cards | Bridge not running, wrong IP, or the bridge machine changed networks (its IP changed — re-provision) |
+| "bridge offline" on the cards | Bridge not running, wrong IP, or the bridge machine changed networks (its IP changed — re-provision). If this happens after every reboot, install the bridge as a service: [`../bridge/service/`](../bridge/service/README.md) |
+| Cost page works, Usage page blank | The spend scan is local (always works) but the limits fetch needs your Claude Code login. On macOS that's a Keychain grant — re-run the bridge in a terminal and click **Always Allow**. Also check you're still logged in (`claude` → `/status`) |
 | Red dot, no data | Device lost WiFi; it retries automatically and falls back to Setup Mode after repeated failures |
 | Your WiFi missing from the scan | It's 5 GHz-only. Enable the router's 2.4 GHz band or use a second SSID for IoT devices |
 | Setup page won't pop up | Open `http://192.168.4.1` manually while joined to the Clawdito AP |

@@ -1,0 +1,61 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  firmware:
+    name: firmware (pio run)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            ~/.cache/pip
+          key: pio-${{ runner.os }}-${{ hashFiles('firmware/platformio.ini') }}
+          restore-keys: pio-${{ runner.os }}-
+
+      - name: Install PlatformIO
+        run: pip install --upgrade platformio
+
+      - name: Build
+        run: pio run
+        working-directory: firmware
+
+  bridge:
+    name: bridge (compile + smoke)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'   # the documented minimum
+
+      - name: Byte-compile
+        run: python -m compileall -q bridge/
+
+      - name: Validate pricing.json
+        run: python -c "import json;json.load(open('bridge/pricing.json'))"
+
+      - name: Smoke test the server
+        run: |
+          python bridge/clawdito_bridge.py --host 127.0.0.1 --port 8788 &
+          for i in $(seq 1 20); do
+            curl -fsS http://127.0.0.1:8788/health && break
+            sleep 0.5
+          done
+          # /health must be anonymous, /usage must require the bearer token
+          curl -fsS http://127.0.0.1:8788/health | grep -q '"ok": true'
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8788/usage)
+          test "$code" = "401" || { echo "unauthenticated /usage returned $code, expected 401"; exit 1; }

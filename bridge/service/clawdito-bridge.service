@@ -1,0 +1,41 @@
+# Clawdito bridge — systemd user service (Linux).
+#
+# A *user* service, not a system one: the bridge reads
+# ~/.claude/.credentials.json, which belongs to your user.
+#
+# Install:
+#   mkdir -p ~/.config/systemd/user
+#   cp clawdito-bridge.service ~/.config/systemd/user/
+#   # edit ExecStart below to point at your clone
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now clawdito-bridge
+#
+# Verify:  systemctl --user status clawdito-bridge
+#          curl -s http://127.0.0.1:8787/health
+# Logs:    journalctl --user -u clawdito-bridge -f
+#
+# To keep it running when you're not logged in:
+#   sudo loginctl enable-linger $USER
+
+[Unit]
+Description=Clawdito bridge (Claude Code usage for the Clawdito device)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# EDIT ME: absolute path to your clone
+ExecStart=/usr/bin/python3 %h/Projects/clawdito/bridge/clawdito_bridge.py --port 8787
+Restart=on-failure
+RestartSec=10s
+
+# Hardening — the bridge only reads two dotdirs and opens one LAN port.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+# It writes its token + nothing else here:
+ReadWritePaths=%h/.clawdito
+
+[Install]
+WantedBy=default.target

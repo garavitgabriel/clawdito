@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Clawdito bridge — macOS LaunchAgent.
+
+  This must be a LaunchAgent (per-user, ~/Library/LaunchAgents), NOT a
+  LaunchDaemon. The bridge reads your Claude Code OAuth credential from the
+  login Keychain, which is only unlocked inside your GUI login session. A
+  LaunchDaemon runs before login as root and will never see it.
+
+  Install:
+    1. Edit the two paths below (marked EDIT ME).
+    2. cp com.clawdito.bridge.plist ~/Library/LaunchAgents/
+    3. launchctl load -w ~/Library/LaunchAgents/com.clawdito.bridge.plist
+
+  Verify:   launchctl list | grep clawdito     (PID, and status 0)
+            curl -s http://127.0.0.1:8787/health
+  Logs:     ~/.clawdito/bridge.log  and  bridge.err.log
+  Stop:     launchctl unload -w ~/Library/LaunchAgents/com.clawdito.bridge.plist
+
+  On first run macOS shows a Keychain prompt (the bridge reading your own
+  Claude Code credential). Click "Always Allow" — under launchd there is no
+  terminal to answer a repeated prompt from.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.clawdito.bridge</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <!-- EDIT ME: absolute path to your clone -->
+        <string>/Users/CHANGEME/Projects/clawdito/bridge/clawdito_bridge.py</string>
+        <string>--port</string>
+        <string>8787</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <!-- Don't let a crash-loop hammer the machine -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <!-- EDIT ME: absolute paths (launchd does not expand ~) -->
+    <key>StandardOutPath</key>
+    <string>/Users/CHANGEME/.clawdito/bridge.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/CHANGEME/.clawdito/bridge.err.log</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>
