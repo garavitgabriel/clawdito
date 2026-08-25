@@ -38,6 +38,25 @@ silently stays empty while the Cost page keeps working. That split (cost
 fine, limits blank) is the signature of a denied or un-persisted Keychain
 grant.
 
+## The token is not in the logs
+
+Run interactively, the bridge prints the device token so you can type it into
+the setup portal. Run as a service, stdout is a logfile — so it prints the
+*path* to the token instead:
+
+```
+device token:     in /Users/you/.clawdito/token
+```
+
+That keeps `bridge.log` safe to paste into a bug report. If you need the
+token itself (re-provisioning a device), read the file:
+
+```bash
+cat ~/.clawdito/token
+```
+
+It's mode 0600 inside a 0700 directory. Don't paste it anywhere.
+
 ## Choosing the host machine
 
 Pick the machine that is actually on when you're working. A laptop that

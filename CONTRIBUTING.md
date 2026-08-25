@@ -65,7 +65,9 @@ Please include:
 - Anything out of `~/.claude/.credentials.json` or the `Claude Code-credentials`
   Keychain item — that's a live OAuth credential for your Anthropic account.
 
-Bridge logs are safe; the bridge never logs the token or the OAuth blob.
+Bridge logs are safe to paste: the bridge never logs requests or the OAuth
+blob, and it only prints the device token when it's attached to a terminal —
+never into a service logfile.
 
 ## Scope
 

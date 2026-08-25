@@ -310,8 +310,17 @@ def serve(host: str, port: int) -> None:
     server = ThreadingHTTPServer((host, port), Handler)
     print("Clawdito bridge running")
     print(f"  device endpoint:  http://{lan_ip()}:{port}/usage")
-    print(f"  device token:     {token}")
-    print("  (enter both in the Clawdito setup portal)")
+    if sys.stdout.isatty():
+        print(f"  device token:     {token}")
+        print("  (enter both in the Clawdito setup portal)")
+    else:
+        # Not a terminal — stdout is a service log (launchd/systemd) that may
+        # get pasted into a bug report. Point at the token file instead of
+        # writing the token into it.
+        print(f"  device token:     in {APP_DIR / 'token'}")
+    # Piped stdout is block-buffered, which would leave a service logfile
+    # empty for hours. This is the only thing printed, so flush it now.
+    sys.stdout.flush()
     server.serve_forever()
 
 
